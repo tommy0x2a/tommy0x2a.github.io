@@ -1,0 +1,183 @@
+<html>
+  <head>
+    <title>My@WebPage</title>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #87ceeb; /* sky-blue fallback */
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        background: url("nevMnts.jpg") repeat-x;
+        background-position-x: 0;
+        background-size: auto 100%;
+      }
+
+      #oGlider {
+        position: absolute;
+        left: 380px;
+        top: 120px;
+        z-index: 10;
+        transition: transform 0.22s ease-out;
+      }
+
+      /* ==== GLOWING SUN (pure CSS – animated, transparent, blends perfectly) ==== */
+      #sun {
+        position: absolute;
+        top: 230px;
+        left: 1740px;
+        width: 130px;
+        height: 130px;
+        z-index: 5; /* sits above mountains but below glider */
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at 40% 40%,
+          #ffeb9e,
+          #f9a02f 40%,
+          #e87a10
+        );
+        box-shadow:
+          0 0 60px 30px #ffd700,
+          /* bright core glow */ 0 0 120px 60px #ffaa00,
+          /* outer halo */ 0 0 200px 90px rgba(255, 180, 0, 0.6); /* huge soft aura */
+        animation: pulseSun 3.2s ease-in-out infinite;
+        pointer-events: none;
+      }
+
+      @keyframes pulseSun {
+        0%,
+        100% {
+          box-shadow:
+            0 0 60px 30px #ffd700,
+            0 0 120px 60px #ffaa00,
+            0 0 200px 90px rgba(255, 180, 0, 0.6);
+          transform: scale(1);
+        }
+        50% {
+          box-shadow:
+            0 0 80px 45px #ffeb9e,
+            0 0 160px 85px #ffcc33,
+            0 0 260px 120px rgba(255, 200, 80, 0.75);
+          transform: scale(1.08);
+        }
+      }
+
+      #hud {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.55);
+        color: white;
+        padding: 14px 20px;
+        border-radius: 10px;
+        font-size: 17px;
+        line-height: 1.6;
+        z-index: 20;
+        min-width: 200px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+      }
+
+      #hud strong {
+        color: #ffd700;
+      }
+    </style>
+
+    <script>
+      var backgroundOffset = 0;
+      var distance = 0;
+      var oGlider;
+      var targetTop = 220;
+      var currentTop = 220;
+      var lastTop = 220;
+
+      function scrollBG() {
+        backgroundOffset += 2.2;
+        if (backgroundOffset > 3000) backgroundOffset = 0;
+
+        document.body.style.backgroundPositionX = -backgroundOffset + "px";
+        distance += 0.042;
+      }
+
+      function applyTurbulence() {
+        if (!oGlider) return;
+        var turbulenceChange = Math.random() * 34 - 17;
+        targetTop += turbulenceChange;
+
+        var minTop = 35;
+        var maxTop = Math.min(window.innerHeight * 0.72, 560);
+        targetTop = Math.max(minTop, Math.min(maxTop, targetTop));
+      }
+
+      function updateGlider() {
+        if (!oGlider) return;
+
+        currentTop = currentTop * 0.84 + targetTop * 0.16;
+
+        var minTop = 35;
+        var maxTop = Math.min(window.innerHeight * 0.72, 560);
+        currentTop = Math.max(minTop, Math.min(maxTop, currentTop));
+
+        oGlider.style.top = currentTop + "px";
+
+        var verticalSpeed = currentTop - lastTop;
+        var bankAngle = Math.max(-22, Math.min(22, verticalSpeed * 1.1));
+        oGlider.style.transform = `rotate(${bankAngle}deg)`;
+
+        lastTop = currentTop;
+        updateHUD();
+      }
+
+      function updateHUD() {
+        var altitude = Math.round(9200 - currentTop * 16);
+        if (altitude < 1800) altitude = 1800;
+
+        document.getElementById("hud").innerHTML = `
+          <strong>Distance Flown:</strong> ${distance.toFixed(1)} km<br>
+          <strong>Altitude:</strong> ${altitude} ft
+        `;
+      }
+
+      function handleMouseMove(e) {
+        targetTop = e.clientY - 45;
+      }
+    </script>
+
+    <script>
+      window.onload = function () {
+        oGlider = document.getElementById("oGlider");
+
+        window.setInterval(scrollBG, 38);
+        window.setInterval(applyTurbulence, 160);
+
+        function gameLoop() {
+          updateGlider();
+          requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+
+        document.addEventListener("mousemove", handleMouseMove);
+        updateHUD();
+      };
+    </script>
+  </head>
+  <body>
+    <!-- Glowing animated sun (pure CSS – no extra files needed) -->
+    <div id="sun"></div>
+
+    <!-- Live HUD -->
+    <div id="hud">
+      Distance Flown: 0.0 km<br />
+      Altitude: 8200 ft
+    </div>
+
+    <!-- Hang glider -->
+    <img src="hg.gif" id="oGlider" border="0" />
+  </body>
+</html>
