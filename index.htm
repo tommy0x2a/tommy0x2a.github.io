@@ -9,7 +9,7 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background-color: #87ceeb; /* sky-blue fallback */
+        background-color: #87ceeb;
         font-family: Arial, sans-serif;
       }
 
@@ -27,7 +27,6 @@
         transition: transform 0.22s ease-out;
       }
 
-      /* ==== GLOWING SUN (pure CSS – animated, transparent, blends perfectly) ==== */
       #sun {
         position: absolute;
         top: 230px;
@@ -68,7 +67,6 @@
         }
       }
 
-      /* ==== SHOOTER CONTAINER (overlays everything) ==== */
       #gameContainer {
         position: absolute;
         top: 0;
@@ -80,7 +78,6 @@
         overflow: hidden;
       }
 
-      /* Energy bolt (glowing cyan-yellow laser) */
       .bolt {
         position: absolute;
         width: 48px;
@@ -101,7 +98,6 @@
         z-index: 20;
         animation: boltFlash 0.15s linear infinite alternate;
       }
-
       @keyframes boltFlash {
         from {
           opacity: 0.9;
@@ -111,7 +107,6 @@
         }
       }
 
-      /* Asteroid (rock emoji with slight rotation for movement feel) */
       .asteroid {
         position: absolute;
         font-size: 42px;
@@ -121,7 +116,6 @@
         pointer-events: none;
         animation: asteroidWobble 0.8s linear infinite alternate;
       }
-
       @keyframes asteroidWobble {
         from {
           transform: rotate(-12deg);
@@ -151,12 +145,34 @@
         color: #ffd700;
       }
 
-      /* Small instruction lines at the bottom of the HUD */
       #hud .instruction {
         font-size: 13px;
         opacity: 0.85;
         margin-top: 6px;
         display: block;
+      }
+
+      /* === SEPARATE GITHUB LINK (always clickable) === */
+      #githubLink {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #ffd700;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 15px;
+        text-decoration: none;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        pointer-events: auto;
+        user-select: none;
+      }
+
+      #githubLink:hover {
+        background: rgba(0, 0, 0, 0.8);
+        text-decoration: underline;
       }
     </style>
 
@@ -176,7 +192,6 @@
       function scrollBG() {
         backgroundOffset += 2.2;
         if (backgroundOffset > 3000) backgroundOffset = 0;
-
         document.body.style.backgroundPositionX = -backgroundOffset + "px";
         distance += 0.042;
       }
@@ -185,7 +200,6 @@
         if (!oGlider) return;
         var turbulenceChange = Math.random() * 34 - 17;
         targetTop += turbulenceChange;
-
         var minTop = 35;
         var maxTop = Math.min(window.innerHeight * 0.72, 560);
         targetTop = Math.max(minTop, Math.min(maxTop, targetTop));
@@ -193,9 +207,7 @@
 
       function updateGlider() {
         if (!oGlider) return;
-
         currentTop = currentTop * 0.84 + targetTop * 0.16;
-
         var minTop = 35;
         var maxTop = Math.min(window.innerHeight * 0.72, 560);
         currentTop = Math.max(minTop, Math.min(maxTop, currentTop));
@@ -227,17 +239,13 @@
         targetTop = e.clientY - 45;
       }
 
-      /* ==================== SHOOTER LOGIC ==================== */
       function fireBolt() {
         if (!oGlider) return;
-
         const gliderRect = oGlider.getBoundingClientRect();
         const bolt = document.createElement("div");
         bolt.className = "bolt";
-
         bolt.style.left = gliderRect.right - 10 + "px";
         bolt.style.top = gliderRect.top + gliderRect.height / 2 - 4 + "px";
-
         document.getElementById("gameContainer").appendChild(bolt);
         bolts.push({
           element: bolt,
@@ -251,14 +259,11 @@
         const asteroid = document.createElement("div");
         asteroid.className = "asteroid";
         asteroid.textContent = "☄️";
-
         const y = Math.random() * (window.innerHeight * 0.75) + 80;
         asteroid.style.left = window.innerWidth + 60 + "px";
         asteroid.style.top = y + "px";
-
         const size = 32 + Math.random() * 24;
         asteroid.style.fontSize = size + "px";
-
         document.getElementById("gameContainer").appendChild(asteroid);
         asteroids.push({
           element: asteroid,
@@ -274,41 +279,27 @@
           const b = bolts[i];
           b.x += b.speed;
           b.element.style.left = b.x + "px";
-
           if (b.x > window.innerWidth + 100) {
             b.element.remove();
             bolts.splice(i, 1);
           }
         }
-
         for (let i = asteroids.length - 1; i >= 0; i--) {
           const a = asteroids[i];
           a.x -= a.speed;
           a.element.style.left = a.x + "px";
-
           if (a.x < -100) {
             a.element.remove();
             asteroids.splice(i, 1);
             continue;
           }
-
           for (let j = bolts.length - 1; j >= 0; j--) {
             const b = bolts[j];
-
-            const boltRight = b.x + 48;
-            const boltTop = b.y;
-            const boltBottom = b.y + 7;
-
-            const astLeft = a.x;
-            const astRight = a.x + a.size;
-            const astTop = a.y - a.size / 2;
-            const astBottom = a.y + a.size / 2;
-
             if (
-              boltRight > astLeft &&
-              b.x < astRight &&
-              boltBottom > astTop &&
-              boltTop < astBottom
+              b.x + 48 > a.x &&
+              b.x < a.x + a.size &&
+              b.y + 7 > a.y - a.size / 2 &&
+              b.y < a.y + a.size / 2
             ) {
               score += 10;
               b.element.remove();
@@ -319,7 +310,6 @@
             }
           }
         }
-
         const now = Date.now();
         if (now - lastAsteroidSpawn > 700 + Math.random() * 400) {
           spawnAsteroid();
@@ -361,13 +351,10 @@
     </script>
   </head>
   <body>
-    <!-- Glowing animated sun -->
     <div id="sun"></div>
-
-    <!-- Game container for bolts & asteroids -->
     <div id="gameContainer"></div>
 
-    <!-- Live HUD (with both instructions) -->
+    <!-- HUD (no longer contains the GitHub link) -->
     <div id="hud">
       Distance Flown: 0.0 km<br />
       Altitude: 8200 ft<br />
@@ -376,7 +363,16 @@
       <span class="instruction">Spacebar to Fire ⚡</span>
     </div>
 
-    <!-- Hang glider -->
+    <!-- SEPARATE, ALWAYS-CLICKABLE GitHub link -->
+    <a
+      href="https://github.com/tommy0x2a"
+      target="_blank"
+      rel="noopener"
+      id="githubLink"
+    >
+      🔗 View on GitHub
+    </a>
+
     <img src="hg.gif" id="oGlider" border="0" />
   </body>
 </html>
