@@ -151,7 +151,7 @@
         color: #ffd700;
       }
 
-      /* Small instruction line at the bottom of the HUD */
+      /* Small instruction lines at the bottom of the HUD */
       #hud .instruction {
         font-size: 13px;
         opacity: 0.85;
@@ -218,6 +218,7 @@
           <strong>Distance Flown:</strong> ${distance.toFixed(1)} km<br>
           <strong>Altitude:</strong> ${altitude} ft<br>
           <strong>Score:</strong> ${score}
+          <span class="instruction">Mouse ↑↓ to Steer Hang Glider 🪂</span>
           <span class="instruction">Spacebar to Fire ⚡</span>
         `;
       }
@@ -269,8 +270,6 @@
       }
 
       function updateShooter() {
-        const container = document.getElementById("gameContainer");
-
         for (let i = bolts.length - 1; i >= 0; i--) {
           const b = bolts[i];
           b.x += b.speed;
@@ -368,11 +367,12 @@
     <!-- Game container for bolts & asteroids -->
     <div id="gameContainer"></div>
 
-    <!-- Live HUD (with "Spacebar to Fire" instruction added) -->
+    <!-- Live HUD (with both instructions) -->
     <div id="hud">
       Distance Flown: 0.0 km<br />
       Altitude: 8200 ft<br />
       Score: 0
+      <span class="instruction">Mouse ↑↓ to Steer Hang Glider 🪂</span>
       <span class="instruction">Spacebar to Fire ⚡</span>
     </div>
 
