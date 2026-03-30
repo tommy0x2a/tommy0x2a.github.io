@@ -34,7 +34,7 @@
         left: 1740px;
         width: 130px;
         height: 130px;
-        z-index: 5; /* sits above mountains but below glider */
+        z-index: 5;
         border-radius: 50%;
         background: radial-gradient(
           circle at 40% 40%,
@@ -44,8 +44,8 @@
         );
         box-shadow:
           0 0 60px 30px #ffd700,
-          /* bright core glow */ 0 0 120px 60px #ffaa00,
-          /* outer halo */ 0 0 200px 90px rgba(255, 180, 0, 0.6); /* huge soft aura */
+          0 0 120px 60px #ffaa00,
+          0 0 200px 90px rgba(255, 180, 0, 0.6);
         animation: pulseSun 3.2s ease-in-out infinite;
         pointer-events: none;
       }
@@ -68,6 +68,69 @@
         }
       }
 
+      /* ==== SHOOTER CONTAINER (overlays everything) ==== */
+      #gameContainer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 15;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      /* Energy bolt (glowing cyan-yellow laser) */
+      .bolt {
+        position: absolute;
+        width: 48px;
+        height: 7px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          #00ffff,
+          #ffff00,
+          #00ffff,
+          transparent
+        );
+        box-shadow:
+          0 0 12px #00ffff,
+          0 0 24px #ffff00,
+          0 0 36px #00ffff;
+        border-radius: 50%;
+        z-index: 20;
+        animation: boltFlash 0.15s linear infinite alternate;
+      }
+
+      @keyframes boltFlash {
+        from {
+          opacity: 0.9;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* Asteroid (rock emoji with slight rotation for movement feel) */
+      .asteroid {
+        position: absolute;
+        font-size: 42px;
+        line-height: 1;
+        z-index: 18;
+        user-select: none;
+        pointer-events: none;
+        animation: asteroidWobble 0.8s linear infinite alternate;
+      }
+
+      @keyframes asteroidWobble {
+        from {
+          transform: rotate(-12deg);
+        }
+        to {
+          transform: rotate(12deg);
+        }
+      }
+
       #hud {
         position: fixed;
         top: 20px;
@@ -78,8 +141,8 @@
         border-radius: 10px;
         font-size: 17px;
         line-height: 1.6;
-        z-index: 20;
-        min-width: 200px;
+        z-index: 30;
+        min-width: 220px;
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
       }
@@ -87,15 +150,28 @@
       #hud strong {
         color: #ffd700;
       }
+
+      /* Small instruction line at the bottom of the HUD */
+      #hud .instruction {
+        font-size: 13px;
+        opacity: 0.85;
+        margin-top: 6px;
+        display: block;
+      }
     </style>
 
     <script>
       var backgroundOffset = 0;
       var distance = 0;
+      var score = 0;
       var oGlider;
       var targetTop = 220;
       var currentTop = 220;
       var lastTop = 220;
+
+      let bolts = [];
+      let asteroids = [];
+      let lastAsteroidSpawn = 0;
 
       function scrollBG() {
         backgroundOffset += 2.2;
@@ -140,12 +216,123 @@
 
         document.getElementById("hud").innerHTML = `
           <strong>Distance Flown:</strong> ${distance.toFixed(1)} km<br>
-          <strong>Altitude:</strong> ${altitude} ft
+          <strong>Altitude:</strong> ${altitude} ft<br>
+          <strong>Score:</strong> ${score}
+          <span class="instruction">Spacebar to Fire ⚡</span>
         `;
       }
 
       function handleMouseMove(e) {
         targetTop = e.clientY - 45;
+      }
+
+      /* ==================== SHOOTER LOGIC ==================== */
+      function fireBolt() {
+        if (!oGlider) return;
+
+        const gliderRect = oGlider.getBoundingClientRect();
+        const bolt = document.createElement("div");
+        bolt.className = "bolt";
+
+        bolt.style.left = gliderRect.right - 10 + "px";
+        bolt.style.top = gliderRect.top + gliderRect.height / 2 - 4 + "px";
+
+        document.getElementById("gameContainer").appendChild(bolt);
+        bolts.push({
+          element: bolt,
+          x: gliderRect.right - 10,
+          y: gliderRect.top + gliderRect.height / 2 - 4,
+          speed: 18,
+        });
+      }
+
+      function spawnAsteroid() {
+        const asteroid = document.createElement("div");
+        asteroid.className = "asteroid";
+        asteroid.textContent = "☄️";
+
+        const y = Math.random() * (window.innerHeight * 0.75) + 80;
+        asteroid.style.left = window.innerWidth + 60 + "px";
+        asteroid.style.top = y + "px";
+
+        const size = 32 + Math.random() * 24;
+        asteroid.style.fontSize = size + "px";
+
+        document.getElementById("gameContainer").appendChild(asteroid);
+        asteroids.push({
+          element: asteroid,
+          x: window.innerWidth + 60,
+          y: y,
+          speed: 4 + Math.random() * 3.5,
+          size: size,
+        });
+      }
+
+      function updateShooter() {
+        const container = document.getElementById("gameContainer");
+
+        for (let i = bolts.length - 1; i >= 0; i--) {
+          const b = bolts[i];
+          b.x += b.speed;
+          b.element.style.left = b.x + "px";
+
+          if (b.x > window.innerWidth + 100) {
+            b.element.remove();
+            bolts.splice(i, 1);
+          }
+        }
+
+        for (let i = asteroids.length - 1; i >= 0; i--) {
+          const a = asteroids[i];
+          a.x -= a.speed;
+          a.element.style.left = a.x + "px";
+
+          if (a.x < -100) {
+            a.element.remove();
+            asteroids.splice(i, 1);
+            continue;
+          }
+
+          for (let j = bolts.length - 1; j >= 0; j--) {
+            const b = bolts[j];
+
+            const boltRight = b.x + 48;
+            const boltTop = b.y;
+            const boltBottom = b.y + 7;
+
+            const astLeft = a.x;
+            const astRight = a.x + a.size;
+            const astTop = a.y - a.size / 2;
+            const astBottom = a.y + a.size / 2;
+
+            if (
+              boltRight > astLeft &&
+              b.x < astRight &&
+              boltBottom > astTop &&
+              boltTop < astBottom
+            ) {
+              score += 10;
+              b.element.remove();
+              a.element.remove();
+              bolts.splice(j, 1);
+              asteroids.splice(i, 1);
+              break;
+            }
+          }
+        }
+
+        const now = Date.now();
+        if (now - lastAsteroidSpawn > 700 + Math.random() * 400) {
+          spawnAsteroid();
+          lastAsteroidSpawn = now;
+        }
+      }
+
+      function handleKeyDown(e) {
+        if (e.key === " " || e.key === "Spacebar") {
+          e.preventDefault();
+          fireBolt();
+        }
       }
     </script>
 
@@ -158,23 +345,35 @@
 
         function gameLoop() {
           updateGlider();
+          updateShooter();
           requestAnimationFrame(gameLoop);
         }
         gameLoop();
 
         document.addEventListener("mousemove", handleMouseMove);
+        document.addEventListener("keydown", handleKeyDown);
+
         updateHUD();
+
+        for (let i = 0; i < 4; i++) {
+          setTimeout(spawnAsteroid, i * 300);
+        }
       };
     </script>
   </head>
   <body>
-    <!-- Glowing animated sun (pure CSS – no extra files needed) -->
+    <!-- Glowing animated sun -->
     <div id="sun"></div>
 
-    <!-- Live HUD -->
+    <!-- Game container for bolts & asteroids -->
+    <div id="gameContainer"></div>
+
+    <!-- Live HUD (with "Spacebar to Fire" instruction added) -->
     <div id="hud">
       Distance Flown: 0.0 km<br />
-      Altitude: 8200 ft
+      Altitude: 8200 ft<br />
+      Score: 0
+      <span class="instruction">Spacebar to Fire ⚡</span>
     </div>
 
     <!-- Hang glider -->
