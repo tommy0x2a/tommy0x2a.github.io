@@ -24,9 +24,10 @@
         left: 380px;
         top: 120px;
         z-index: 10;
-        transition: transform 0.22s ease-out;
+        transition: transform 0.08s linear;
       }
 
+      /* ==== GLOWING SUN ==== */
       #sun {
         position: absolute;
         top: 230px;
@@ -76,6 +77,61 @@
         z-index: 15;
         pointer-events: none;
         overflow: hidden;
+      }
+
+      /* ==== FORCE FIELD ==== */
+      #shield {
+        position: absolute;
+        width: 160px;
+        height: 160px;
+        border: 8px solid rgba(0, 255, 255, 0.9);
+        border-radius: 50%;
+        box-shadow:
+          0 0 30px #0ff,
+          0 0 60px #0ff,
+          0 0 90px #0ff,
+          0 0 130px #0ff;
+        z-index: 9;
+        pointer-events: none;
+        animation: shieldPulse 1.2s ease-in-out infinite;
+        display: none;
+      }
+
+      @keyframes shieldPulse {
+        0%,
+        100% {
+          opacity: 0.7;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.08);
+        }
+      }
+
+      /* ==== EXPLOSION EFFECT ==== */
+      .explosion {
+        position: absolute;
+        font-size: 120px;
+        line-height: 1;
+        z-index: 25;
+        pointer-events: none;
+        animation: explodeAnim 800ms ease-out forwards;
+        user-select: none;
+      }
+
+      @keyframes explodeAnim {
+        0% {
+          transform: scale(0.2);
+          opacity: 1;
+        }
+        40% {
+          transform: scale(1.4);
+        }
+        100% {
+          transform: scale(1.8);
+          opacity: 0;
+        }
       }
 
       .bolt {
@@ -152,7 +208,30 @@
         display: block;
       }
 
-      /* === SEPARATE GITHUB LINK (always clickable) === */
+      /* ==== RESTART BUTTON ==== */
+      #restartBtn {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(#ff4444, #cc0000);
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        padding: 18px 42px;
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(255, 60, 60, 0.6);
+        cursor: pointer;
+        z-index: 99999;
+        display: none;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      }
+
+      #restartBtn:hover {
+        transform: translate(-50%, -50%) scale(1.08);
+      }
+
       #githubLink {
         position: fixed;
         bottom: 20px;
@@ -167,7 +246,6 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         cursor: pointer;
         pointer-events: auto;
-        user-select: none;
       }
 
       #githubLink:hover {
@@ -189,7 +267,20 @@
       let asteroids = [];
       let lastAsteroidSpawn = 0;
 
+      // ==== FORCE FIELD ====
+      let shieldActive = false;
+      let shieldEndTime = 0;
+      let nextShieldScore = 50;
+      const shieldDuration = 12000;
+      const shieldRadius = 85;
+
+      // ==== CRASH / GAME OVER ====
+      let gameOver = false;
+      let crashSpin = 0;
+      let crashFallSpeed = 0;
+
       function scrollBG() {
+        if (gameOver) return;
         backgroundOffset += 2.2;
         if (backgroundOffset > 3000) backgroundOffset = 0;
         document.body.style.backgroundPositionX = -backgroundOffset + "px";
@@ -197,7 +288,7 @@
       }
 
       function applyTurbulence() {
-        if (!oGlider) return;
+        if (!oGlider || gameOver) return;
         var turbulenceChange = Math.random() * 34 - 17;
         targetTop += turbulenceChange;
         var minTop = 35;
@@ -207,6 +298,18 @@
 
       function updateGlider() {
         if (!oGlider) return;
+
+        if (gameOver) {
+          crashSpin += 18;
+          crashFallSpeed += 0.38;
+          currentTop += crashFallSpeed;
+
+          oGlider.style.top = currentTop + "px";
+          oGlider.style.transform = `rotate(${crashSpin}deg)`;
+          updateHUD();
+          return;
+        }
+
         currentTop = currentTop * 0.84 + targetTop * 0.16;
         var minTop = 35;
         var maxTop = Math.min(window.innerHeight * 0.72, 560);
@@ -219,28 +322,75 @@
         oGlider.style.transform = `rotate(${bankAngle}deg)`;
 
         lastTop = currentTop;
+        updateShieldPosition();
         updateHUD();
+      }
+
+      function updateShieldPosition() {
+        const shield = document.getElementById("shield");
+        if (!shield) return;
+
+        if (!shieldActive || gameOver) {
+          shield.style.display = "none";
+          return;
+        }
+
+        const gliderRect = oGlider.getBoundingClientRect();
+        const centerX = gliderRect.left + gliderRect.width / 2 - 80;
+        const centerY = gliderRect.top + gliderRect.height / 2 - 80;
+
+        shield.style.left = centerX + "px";
+        shield.style.top = centerY + "px";
+        shield.style.display = "block";
+      }
+
+      function createExplosion(x, y) {
+        const exp = document.createElement("div");
+        exp.className = "explosion";
+        exp.textContent = "💥";
+        exp.style.left = x - 60 + "px";
+        exp.style.top = y - 60 + "px";
+        document.getElementById("gameContainer").appendChild(exp);
+
+        // Remove after animation finishes
+        setTimeout(() => exp.remove(), 900);
       }
 
       function updateHUD() {
         var altitude = Math.round(9200 - currentTop * 16);
         if (altitude < 1800) altitude = 1800;
 
-        document.getElementById("hud").innerHTML = `
+        let hudHTML = `
           <strong>Distance Flown:</strong> ${distance.toFixed(1)} km<br>
           <strong>Altitude:</strong> ${altitude} ft<br>
           <strong>Score:</strong> ${score}
           <span class="instruction">Mouse ↑↓ to Steer Hang Glider 🪂</span>
           <span class="instruction">Spacebar to Fire ⚡</span>
         `;
+
+        if (gameOver) {
+          hudHTML += `<span class="instruction" style="color:#f33; font-weight:bold;">💥 CRASHED! 💥</span>`;
+        } else if (shieldActive) {
+          const timeLeft = Math.max(
+            0,
+            Math.ceil((shieldEndTime - Date.now()) / 1000),
+          );
+          hudHTML += `<span class="instruction" style="color:#0ff; font-weight:bold;">FORCE FIELD ACTIVE ⚡ ${timeLeft}s</span>`;
+        } else {
+          const ptsNeeded = Math.max(0, nextShieldScore - score);
+          hudHTML += `<span class="instruction" style="color:#0ff;">Shield in ${ptsNeeded} pts</span>`;
+        }
+
+        document.getElementById("hud").innerHTML = hudHTML;
       }
 
       function handleMouseMove(e) {
+        if (gameOver) return;
         targetTop = e.clientY - 45;
       }
 
       function fireBolt() {
-        if (!oGlider) return;
+        if (!oGlider || gameOver) return;
         const gliderRect = oGlider.getBoundingClientRect();
         const bolt = document.createElement("div");
         bolt.className = "bolt";
@@ -256,6 +406,7 @@
       }
 
       function spawnAsteroid() {
+        if (gameOver) return;
         const asteroid = document.createElement("div");
         asteroid.className = "asteroid";
         asteroid.textContent = "☄️";
@@ -275,6 +426,9 @@
       }
 
       function updateShooter() {
+        if (gameOver) return;
+
+        // Bolts
         for (let i = bolts.length - 1; i >= 0; i--) {
           const b = bolts[i];
           b.x += b.speed;
@@ -284,15 +438,23 @@
             bolts.splice(i, 1);
           }
         }
+
+        const gliderRect = oGlider.getBoundingClientRect();
+        const gliderCenterX = gliderRect.left + gliderRect.width / 2;
+        const gliderCenterY = gliderRect.top + gliderRect.height / 2;
+
         for (let i = asteroids.length - 1; i >= 0; i--) {
           const a = asteroids[i];
           a.x -= a.speed;
           a.element.style.left = a.x + "px";
+
           if (a.x < -100) {
             a.element.remove();
             asteroids.splice(i, 1);
             continue;
           }
+
+          // Bolt hits
           for (let j = bolts.length - 1; j >= 0; j--) {
             const b = bolts[j];
             if (
@@ -309,19 +471,99 @@
               break;
             }
           }
+
+          // Force field
+          if (shieldActive) {
+            const dx = a.x + a.size / 2 - gliderCenterX;
+            const dy = a.y + a.size / 2 - gliderCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < shieldRadius + a.size / 2) {
+              score += 25;
+              a.element.remove();
+              asteroids.splice(i, 1);
+              continue;
+            }
+          }
+
+          // CRASH: asteroid hits glider with no shield
+          if (!shieldActive) {
+            const dx = a.x + a.size / 2 - gliderCenterX;
+            const dy = a.y + a.size / 2 - gliderCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 55 + a.size / 2) {
+              // CRASH!
+              gameOver = true;
+              createExplosion(gliderCenterX, gliderCenterY); // ← EXPLOSION
+              a.element.remove();
+              asteroids.splice(i, 1);
+
+              document.getElementById("restartBtn").style.display = "block";
+              break;
+            }
+          }
         }
+
+        // Spawn asteroids
         const now = Date.now();
         if (now - lastAsteroidSpawn > 700 + Math.random() * 400) {
           spawnAsteroid();
           lastAsteroidSpawn = now;
         }
+
+        // Shield activation
+        if (score >= nextShieldScore && !shieldActive) {
+          shieldActive = true;
+          shieldEndTime = Date.now() + shieldDuration;
+          nextShieldScore += 250;
+        }
+
+        if (shieldActive && Date.now() > shieldEndTime) {
+          shieldActive = false;
+        }
       }
 
       function handleKeyDown(e) {
+        if (gameOver) return;
         if (e.key === " " || e.key === "Spacebar") {
           e.preventDefault();
           fireBolt();
         }
+      }
+
+      function restartGame() {
+        // Reset everything
+        gameOver = false;
+        score = 0;
+        distance = 0;
+        backgroundOffset = 0;
+        currentTop = 220;
+        targetTop = 220;
+        lastTop = 220;
+        crashSpin = 0;
+        crashFallSpeed = 0;
+
+        bolts = [];
+        asteroids = [];
+        lastAsteroidSpawn = Date.now();
+
+        // Clear screen elements
+        document
+          .querySelectorAll(".bolt, .asteroid")
+          .forEach((el) => el.remove());
+
+        // Reset glider
+        oGlider.style.top = "220px";
+        oGlider.style.transform = "rotate(0deg)";
+
+        // Hide restart button
+        document.getElementById("restartBtn").style.display = "none";
+
+        // Reset shield
+        shieldActive = false;
+        nextShieldScore = 50;
+
+        updateHUD();
       }
     </script>
 
@@ -342,6 +584,11 @@
         document.addEventListener("mousemove", handleMouseMove);
         document.addEventListener("keydown", handleKeyDown);
 
+        // Restart button click handler
+        document
+          .getElementById("restartBtn")
+          .addEventListener("click", restartGame);
+
         updateHUD();
 
         for (let i = 0; i < 4; i++) {
@@ -354,7 +601,10 @@
     <div id="sun"></div>
     <div id="gameContainer"></div>
 
-    <!-- HUD (no longer contains the GitHub link) -->
+    <!-- FORCE FIELD -->
+    <div id="shield"></div>
+
+    <!-- HUD -->
     <div id="hud">
       Distance Flown: 0.0 km<br />
       Altitude: 8200 ft<br />
@@ -363,7 +613,7 @@
       <span class="instruction">Spacebar to Fire ⚡</span>
     </div>
 
-    <!-- SEPARATE, ALWAYS-CLICKABLE GitHub link -->
+    <!-- GitHub link -->
     <a
       href="https://github.com/tommy0x2a"
       target="_blank"
@@ -373,6 +623,10 @@
       🔗 View on GitHub
     </a>
 
+    <!-- RESTART BUTTON (hidden until crash) -->
+    <button id="restartBtn">RESTART GAME</button>
+
+    <!-- Hang glider -->
     <img src="hg.gif" id="oGlider" border="0" />
   </body>
 </html>
